@@ -1,0 +1,39 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Assignment Submission Portal</title>
+  <style>
+    body{font-family:sans-serif;max-width:700px;margin:2rem auto;padding:0 1rem}
+    label{display:block;margin-top:.7rem} input{width:100%;padding:.4rem}
+    .err{color:#b00020} .ok{color:#1b7f1b}
+    table{width:100%;border-collapse:collapse;margin-top:1rem}
+    th,td{border:1px solid #ccc;padding:.4rem;text-align:left}
+  </style>
+</head>
+<body>
+  <h1>Assignment Submission Portal</h1>
+
+  {% if success %}<p class="ok">{{ success }}</p>{% endif %}
+  {% for e in errors %}<p class="err">{{ e }}</p>{% endfor %}
+
+  <form method="post" action="/submit">
+    <label>Name <input name="name" value="{{ form.name or '' }}"></label>
+    <label>Registration number <input name="reg_no" value="{{ form.reg_no or '' }}"></label>
+    <label>Assignment title <input name="title" value="{{ form.title or '' }}"></label>
+    <label>Submission URL <input name="url" value="{{ form.url or '' }}"></label>
+    <p><button type="submit">Submit</button></p>
+  </form>
+
+  <h2>Saved submissions</h2>
+  <table>
+    <tr><th>Name</th><th>Reg. no</th><th>Title</th><th>Link</th><th>Submitted</th></tr>
+    {% for s in submissions %}
+    <tr><td>{{ s.name }}</td><td>{{ s.reg_no }}</td><td>{{ s.title }}</td>
+        <td><a href="{{ s.url }}" target="_blank">open</a></td><td>{{ s.submitted_at }}</td></tr>
+    {% else %}
+    <tr><td colspan="5">No submissions yet.</td></tr>
+    {% endfor %}
+  </table>
+</body>
+</html>

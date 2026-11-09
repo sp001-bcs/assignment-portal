@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Assignment Submission Portal (demo)</title>
+  <style>
+    body{font-family:sans-serif;max-width:700px;margin:2rem auto;padding:0 1rem}
+    label{display:block;margin-top:.7rem} input{width:100%;padding:.4rem}
+    .err{color:#b00020} .ok{color:#1b7f1b}
+    table{width:100%;border-collapse:collapse;margin-top:1rem}
+    th,td{border:1px solid #ccc;padding:.4rem;text-align:left}
+  </style>
+</head>
+<body>
+  <h1>Assignment Submission Portal</h1>
+  <p><em>Static demo: submissions are stored only in this browser.</em></p>
+  <div id="msg"></div>
+  <form id="form">
+    <label>Name <input name="name"></label>
+    <label>Registration number <input name="reg_no"></label>
+    <label>Assignment title <input name="title"></label>
+    <label>Submission URL <input name="url"></label>
+    <p><button type="submit">Submit</button></p>
+  </form>
+  <h2>Saved submissions</h2>
+  <table><thead><tr><th>Name</th><th>Reg. no</th><th>Title</th><th>Link</th></tr></thead>
+  <tbody id="list"></tbody></table>
+<script>
+const KEY = "submissions";
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const load = () => { try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch { return []; } };
+const store = items => { try { localStorage.setItem(KEY, JSON.stringify(items)); } catch {} };
+const LABELS = {name:"Name", reg_no:"Registration number", title:"Assignment title", url:"Submission URL"};
+
+function validate(d) {
+  const errors = [];
+  for (const k in LABELS) if (!d[k]) errors.push(LABELS[k] + " is required.");
+  if (d.url) {
+    try { const u = new URL(d.url); if (!["http:","https:"].includes(u.protocol) || !u.host) throw 0; }
+    catch { errors.push("Submission URL must be a valid http(s) link."); }
+  }
+  return errors;
+}
+function render() {
+  const items = load();
+  document.getElementById("list").innerHTML = items.length
+    ? items.map(s => `<tr><td>${esc(s.name)}</td><td>${esc(s.reg_no)}</td><td>${esc(s.title)}</td><td><a href="${esc(s.url)}" target="_blank">open</a></td></tr>`).join("")
+    : `<tr><td colspan="4">No submissions yet.</td></tr>`;
+}
+document.getElementById("form").addEventListener("submit", e => {
+  e.preventDefault();
+  const fd = new FormData(e.target), d = {};
+  for (const k in LABELS) d[k] = (fd.get(k) || "").trim();
+  const errors = validate(d), msg = document.getElementById("msg");
+  if (errors.length) { msg.innerHTML = errors.map(x => `<p class="err">${esc(x)}</p>`).join(""); return; }
+  store([...load(), d]); e.target.reset();
+  msg.innerHTML = `<p class="ok">Submission saved.</p>`; render();
+});
+render();
+</script>
+</body>
+</html>

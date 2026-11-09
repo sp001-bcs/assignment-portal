@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the pushed revision
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest -v --junitxml=results.xml
+
+      - name: Build JSON test report
+        if: always()
+        run: python scripts/build_report.py results.xml testreport.json
+
+      - name: Print report
+        if: always()
+        run: cat testreport.json
+
+      - name: Send report to local receiver
+        if: always()
+        env:
+          RECEIVER_URL: ${{ secrets.RECEIVER_URL }}
+          RECEIVER_TOKEN: ${{ secrets.RECEIVER_TOKEN }}
+        run: |
+          curl --fail-with-body -sS -X POST "${RECEIVER_URL}/report" \
+            -H "Content-Type: application/json" \
+            -H "X-Token: ${RECEIVER_TOKEN}" \
+            --data-binary @testreport.json
+
+      - name: Keep report as a downloadable artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: testreport-${{ github.run_id }}
+          path: testreport.json
+
+      - name: Email test report
+        if: always()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 465
+          secure: true
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          to: ${{ secrets.MAIL_TO }}
+          from: CI Bot <${{ secrets.MAIL_USERNAME }}>
+          subject: "CI ${{ job.status }} - ${{ github.repository }} @ ${{ github.sha }}"
+          body: file://report_summary.txt
+          attachments: testreport.json
+
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && needs.test.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+      - id: deployment
+        uses: actions/deploy-pages@v4
